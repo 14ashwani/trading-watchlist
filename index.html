@@ -1,0 +1,839 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>Trading Watchlist</title>
+
+  <!-- PWA -->
+  <link rel="manifest" href="manifest.json" />
+  <meta name="theme-color" content="#0f1117" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="Watchlist" />
+  <link rel="apple-touch-icon" href="icon-192.png" />
+
+  <!-- SEO / OG -->
+  <meta name="description" content="Personal stock trading watchlist. Track Long Term, Short Term, Swing, and Intraday trade ideas." />
+
+  <style>
+    :root {
+      --bg: #0f1117;
+      --surface: #161b27;
+      --card: #1c2333;
+      --border: rgba(255,255,255,0.08);
+      --border-md: rgba(255,255,255,0.14);
+      --text: #e8ecf0;
+      --muted: #8b95a5;
+      --faint: #4a5568;
+
+      --blue: #3b82f6;
+      --blue-bg: rgba(59,130,246,0.12);
+      --blue-text: #93c5fd;
+
+      --amber: #f59e0b;
+      --amber-bg: rgba(245,158,11,0.12);
+      --amber-text: #fcd34d;
+
+      --green: #22c55e;
+      --green-bg: rgba(34,197,94,0.12);
+      --green-text: #86efac;
+
+      --red: #ef4444;
+      --red-bg: rgba(239,68,68,0.12);
+      --red-text: #fca5a5;
+
+      --purple: #a855f7;
+      --purple-bg: rgba(168,85,247,0.12);
+      --purple-text: #d8b4fe;
+
+      --radius: 10px;
+      --radius-lg: 14px;
+      --radius-xl: 20px;
+      --font: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      --mono: 'JetBrains Mono', 'Fira Code', 'Cascadia Code', monospace;
+
+      --safe-top: env(safe-area-inset-top, 0px);
+      --safe-bottom: env(safe-area-inset-bottom, 0px);
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+
+    html { height: 100%; }
+
+    body {
+      font-family: var(--font);
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100%;
+      overflow-x: hidden;
+    }
+
+    /* ─── TOP BAR ─────────────────────────────── */
+    .topbar {
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      background: rgba(15,17,23,0.92);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border-bottom: 1px solid var(--border);
+      padding: calc(var(--safe-top) + 12px) 16px 12px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    .topbar-left { display: flex; align-items: center; gap: 10px; }
+    .app-icon {
+      width: 34px; height: 34px; border-radius: 9px;
+      background: linear-gradient(135deg, #1e3a5f, #0f2440);
+      border: 1px solid var(--border-md);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 18px;
+    }
+    .app-title { font-size: 16px; font-weight: 600; color: var(--text); }
+    .app-subtitle { font-size: 11px; color: var(--muted); margin-top: 1px; }
+
+    .install-btn {
+      display: none;
+      padding: 7px 12px;
+      border-radius: var(--radius);
+      border: 1px solid var(--blue);
+      background: var(--blue-bg);
+      color: var(--blue-text);
+      font-size: 12px;
+      font-weight: 500;
+      cursor: pointer;
+      white-space: nowrap;
+      align-items: center;
+      gap: 5px;
+    }
+    .install-btn.visible { display: flex; }
+    .install-btn:active { opacity: 0.7; }
+
+    /* ─── SUMMARY STRIP ───────────────────────── */
+    .summary {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 8px;
+      padding: 12px 16px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .sum-card {
+      background: var(--surface);
+      border-radius: var(--radius);
+      border: 1px solid var(--border);
+      padding: 10px 10px 8px;
+      cursor: pointer;
+      transition: border-color 0.15s, transform 0.1s;
+      text-align: center;
+    }
+    .sum-card:active { transform: scale(0.97); }
+    .sum-card.active { border-color: var(--blue); background: rgba(59,130,246,0.07); }
+
+    .sum-num { font-size: 20px; font-weight: 700; font-family: var(--mono); color: var(--text); }
+    .sum-lbl { font-size: 10px; color: var(--muted); margin-top: 2px; font-weight: 500; letter-spacing: 0.3px; }
+
+    /* ─── TAB NAV ─────────────────────────────── */
+    .tab-scroll { overflow-x: auto; scrollbar-width: none; border-bottom: 1px solid var(--border); }
+    .tab-scroll::-webkit-scrollbar { display: none; }
+    .tabs { display: flex; gap: 0; padding: 0 12px; }
+
+    .tab {
+      flex-shrink: 0;
+      padding: 12px 16px;
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--muted);
+      border: none;
+      background: transparent;
+      cursor: pointer;
+      border-bottom: 2px solid transparent;
+      margin-bottom: -1px;
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      transition: color 0.15s;
+      white-space: nowrap;
+    }
+    .tab:active { opacity: 0.7; }
+    .tab.active { color: var(--text); border-bottom-color: var(--blue); }
+    .tab .cnt {
+      font-size: 11px;
+      padding: 1px 6px;
+      border-radius: 20px;
+      background: var(--surface);
+      color: var(--muted);
+      font-weight: 600;
+    }
+    .tab.active .cnt { background: var(--blue-bg); color: var(--blue-text); }
+
+    /* ─── CONTENT ─────────────────────────────── */
+    .content { padding: 16px; padding-bottom: calc(var(--safe-bottom) + 100px); }
+
+    .section-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 14px;
+    }
+    .section-info { display: flex; align-items: center; gap: 8px; }
+    .section-icon { font-size: 18px; }
+    .section-name { font-size: 15px; font-weight: 600; }
+    .section-desc { font-size: 12px; color: var(--muted); }
+
+    .btn-add {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 8px 14px;
+      background: var(--blue);
+      color: #fff;
+      font-size: 13px;
+      font-weight: 600;
+      border: none;
+      border-radius: var(--radius);
+      cursor: pointer;
+      transition: opacity 0.15s, transform 0.1s;
+      flex-shrink: 0;
+    }
+    .btn-add:active { opacity: 0.8; transform: scale(0.97); }
+
+    /* ─── STOCK CARDS ─────────────────────────── */
+    .stocks-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+      gap: 12px;
+    }
+
+    @media (max-width: 500px) {
+      .stocks-grid { grid-template-columns: 1fr; }
+    }
+
+    .stock-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 14px;
+      transition: border-color 0.15s;
+    }
+    .stock-card:hover { border-color: var(--border-md); }
+
+    .card-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 8px;
+    }
+    .card-symbol { font-size: 20px; font-weight: 700; font-family: var(--mono); color: var(--text); }
+    .card-company { font-size: 13px; color: var(--muted); margin-top: 2px; }
+
+    .badge {
+      font-size: 11px;
+      font-weight: 600;
+      padding: 3px 9px;
+      border-radius: 20px;
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+
+    .prices {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+      margin-top: 12px;
+      padding-top: 12px;
+      border-top: 1px solid var(--border);
+    }
+    .price-lbl { font-size: 10px; color: var(--faint); letter-spacing: 0.4px; font-weight: 500; }
+    .price-val { font-size: 13px; font-weight: 600; font-family: var(--mono); margin-top: 3px; }
+
+    .metrics {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-top: 10px;
+    }
+    .metric {
+      font-size: 12px;
+      padding: 2px 8px;
+      border-radius: 20px;
+      font-weight: 500;
+    }
+
+    .notes {
+      font-size: 12px;
+      color: var(--muted);
+      margin-top: 10px;
+      padding-top: 10px;
+      border-top: 1px solid var(--border);
+      line-height: 1.55;
+    }
+
+    .card-footer {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      margin-top: 12px;
+    }
+    .btn-sm {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      padding: 5px 11px;
+      border-radius: var(--radius);
+      border: 1px solid var(--border-md);
+      background: transparent;
+      color: var(--muted);
+      font-size: 12px;
+      cursor: pointer;
+      transition: background 0.15s;
+      font-family: var(--font);
+    }
+    .btn-sm:hover { background: rgba(255,255,255,0.05); color: var(--text); }
+    .btn-sm:active { opacity: 0.7; }
+    .btn-sm.red { color: var(--red-text); border-color: rgba(239,68,68,0.3); }
+    .btn-sm.red:hover { background: var(--red-bg); }
+
+    .card-date { font-size: 11px; color: var(--faint); margin-left: auto; }
+
+    /* ─── EMPTY STATE ─────────────────────────── */
+    .empty {
+      text-align: center;
+      padding: 48px 24px;
+      color: var(--faint);
+      grid-column: 1 / -1;
+    }
+    .empty-icon { font-size: 36px; margin-bottom: 12px; opacity: 0.35; }
+    .empty-title { font-size: 15px; color: var(--muted); font-weight: 500; }
+    .empty-sub { font-size: 13px; margin-top: 6px; line-height: 1.5; }
+
+    /* ─── MODAL / DRAWER ──────────────────────── */
+    .overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.65);
+      backdrop-filter: blur(4px);
+      z-index: 200;
+      align-items: flex-end;
+      justify-content: center;
+    }
+    .overlay.open { display: flex; }
+
+    .drawer {
+      background: var(--surface);
+      border-radius: var(--radius-xl) var(--radius-xl) 0 0;
+      border-top: 1px solid var(--border-md);
+      width: 100%;
+      max-width: 560px;
+      max-height: 90vh;
+      overflow-y: auto;
+      padding: 8px 20px calc(var(--safe-bottom) + 24px);
+      animation: slideUp 0.25s ease;
+    }
+
+    @keyframes slideUp {
+      from { transform: translateY(30px); opacity: 0; }
+      to { transform: translateY(0); opacity: 1; }
+    }
+
+    .drawer-handle {
+      width: 36px; height: 4px;
+      background: var(--border-md);
+      border-radius: 2px;
+      margin: 12px auto 20px;
+    }
+
+    .drawer-title {
+      font-size: 16px;
+      font-weight: 600;
+      color: var(--text);
+      margin-bottom: 20px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 14px; }
+    .form-group { display: flex; flex-direction: column; gap: 6px; margin-bottom: 14px; }
+    .form-group label { font-size: 12px; font-weight: 500; color: var(--muted); }
+    .form-group input,
+    .form-group select,
+    .form-group textarea {
+      background: var(--card);
+      border: 1px solid var(--border-md);
+      border-radius: var(--radius);
+      padding: 10px 12px;
+      font-size: 14px;
+      color: var(--text);
+      font-family: var(--font);
+      width: 100%;
+      outline: none;
+      transition: border-color 0.15s;
+      appearance: none;
+      -webkit-appearance: none;
+    }
+    .form-group input:focus,
+    .form-group select:focus,
+    .form-group textarea:focus { border-color: var(--blue); }
+    .form-group input.err { border-color: var(--red) !important; }
+    .form-group textarea { resize: none; min-height: 72px; line-height: 1.5; }
+    .form-group select { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' fill='none'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%238b95a5' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 12px center; padding-right: 36px; }
+
+    .hint { font-size: 11px; color: var(--faint); margin-top: -8px; margin-bottom: 14px; }
+
+    .form-actions { display: flex; gap: 10px; padding-top: 8px; }
+    .btn-cancel {
+      flex: 1;
+      padding: 12px;
+      border-radius: var(--radius);
+      border: 1px solid var(--border-md);
+      background: transparent;
+      color: var(--muted);
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      font-family: var(--font);
+    }
+    .btn-cancel:active { opacity: 0.7; }
+    .btn-save {
+      flex: 2;
+      padding: 12px;
+      border-radius: var(--radius);
+      border: none;
+      background: var(--blue);
+      color: #fff;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      font-family: var(--font);
+      transition: opacity 0.15s;
+    }
+    .btn-save:active { opacity: 0.8; }
+
+    /* ─── TOAST ───────────────────────────────── */
+    .toast {
+      position: fixed;
+      bottom: calc(var(--safe-bottom) + 20px);
+      left: 50%;
+      transform: translateX(-50%) translateY(10px);
+      background: #1c2d1e;
+      border: 1px solid rgba(34,197,94,0.3);
+      color: var(--green-text);
+      padding: 10px 18px;
+      border-radius: var(--radius);
+      font-size: 13px;
+      font-weight: 500;
+      z-index: 999;
+      opacity: 0;
+      transition: opacity 0.2s, transform 0.2s;
+      white-space: nowrap;
+    }
+    .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+    /* ─── SCROLLBAR ───────────────────────────── */
+    ::-webkit-scrollbar { width: 4px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: var(--border-md); border-radius: 2px; }
+  </style>
+</head>
+<body>
+
+<!-- TOP BAR -->
+<div class="topbar">
+  <div class="topbar-left">
+    <div class="app-icon">📈</div>
+    <div>
+      <div class="app-title">Trading Watchlist</div>
+      <div class="app-subtitle" id="topbar-date"></div>
+    </div>
+  </div>
+  <button class="install-btn" id="install-btn" onclick="installApp()">
+    ⬇ Install App
+  </button>
+</div>
+
+<!-- SUMMARY -->
+<div class="summary" id="summary"></div>
+
+<!-- TABS -->
+<div class="tab-scroll">
+  <div class="tabs" id="tabs"></div>
+</div>
+
+<!-- MAIN CONTENT -->
+<div class="content" id="content"></div>
+
+<!-- ADD / EDIT DRAWER -->
+<div class="overlay" id="overlay" onclick="handleOverlayClick(event)">
+  <div class="drawer" id="drawer">
+    <div class="drawer-handle"></div>
+    <div class="drawer-title" id="drawer-title">Add Stock</div>
+
+    <div class="form-row">
+      <div class="form-group">
+        <label>Symbol *</label>
+        <input id="f-sym" type="text" placeholder="RELIANCE" autocomplete="off" autocorrect="off" autocapitalize="characters" spellcheck="false" />
+      </div>
+      <div class="form-group">
+        <label>Company Name</label>
+        <input id="f-co" type="text" placeholder="e.g. Reliance Industries" />
+      </div>
+    </div>
+
+    <div class="form-row">
+      <div class="form-group">
+        <label>Buy Price (₹)</label>
+        <input id="f-buy" type="number" step="0.01" placeholder="0.00" inputmode="decimal" />
+      </div>
+      <div class="form-group">
+        <label>Target Price (₹)</label>
+        <input id="f-tgt" type="number" step="0.01" placeholder="0.00" inputmode="decimal" />
+      </div>
+    </div>
+
+    <div class="form-row">
+      <div class="form-group">
+        <label>Stop Loss (₹)</label>
+        <input id="f-sl" type="number" step="0.01" placeholder="0.00" inputmode="decimal" />
+      </div>
+      <div class="form-group">
+        <label>Status</label>
+        <select id="f-st">
+          <option>Watching</option>
+          <option>Ready to Buy</option>
+          <option>Bought</option>
+          <option>Completed</option>
+          <option>Cancelled</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="form-group">
+      <label>Notes / Trade Thesis</label>
+      <textarea id="f-notes" placeholder="Entry triggers, support/resistance levels, catalyst, risk factors…"></textarea>
+    </div>
+
+    <p class="hint">Return %, risk %, and R:R ratio are calculated automatically.</p>
+
+    <div class="form-actions">
+      <button class="btn-cancel" onclick="closeDrawer()">Cancel</button>
+      <button class="btn-save" id="btn-save" onclick="saveStock()">Add Stock</button>
+    </div>
+  </div>
+</div>
+
+<!-- TOAST -->
+<div class="toast" id="toast"></div>
+
+<script>
+/* ─── CONFIG ──────────────────────────────────────── */
+const SECS = [
+  { id:'longTerm',  name:'Long Term',     desc:'Years horizon',    emoji:'📊', color:'blue'   },
+  { id:'shortTerm', name:'Short Term',    desc:'Weeks to months',  emoji:'📅', color:'amber'  },
+  { id:'swing',     name:'Swing',         desc:'Days to weeks',    emoji:'📈', color:'green'  },
+  { id:'intraday',  name:'Intraday',      desc:'Same day trades',  emoji:'⚡', color:'red'    },
+];
+
+const COLORS = {
+  blue:  { badge:'color:var(--blue-text);background:var(--blue-bg)',  text:'color:var(--blue-text)'  },
+  amber: { badge:'color:var(--amber-text);background:var(--amber-bg)',text:'color:var(--amber-text)' },
+  green: { badge:'color:var(--green-text);background:var(--green-bg)',text:'color:var(--green-text)' },
+  red:   { badge:'color:var(--red-text);background:var(--red-bg)',    text:'color:var(--red-text)'   },
+  purple:{ badge:'color:var(--purple-text);background:var(--purple-bg)',text:'color:var(--purple-text)' },
+};
+
+const STATUS_COLOR = {
+  'Watching':     'blue',
+  'Ready to Buy': 'amber',
+  'Bought':       'green',
+  'Completed':    'green',
+  'Cancelled':    'red',
+};
+
+/* ─── STATE ───────────────────────────────────────── */
+let state = {
+  active: 'longTerm',
+  stocks: { longTerm:[], shortTerm:[], swing:[], intraday:[] },
+  editing: null,
+  editSec: null,
+};
+
+const KEY = 'trading-wl-v1';
+function load() {
+  try {
+    const d = JSON.parse(localStorage.getItem(KEY) || '{}');
+    if (d.stocks) SECS.forEach(s => { state.stocks[s.id] = d.stocks[s.id] || []; });
+    if (d.active) state.active = d.active;
+  } catch(e) {}
+}
+function save() {
+  try { localStorage.setItem(KEY, JSON.stringify({ stocks: state.stocks, active: state.active })); } catch(e) {}
+}
+
+/* ─── UTILS ───────────────────────────────────────── */
+function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2); }
+function pct(a, b) { if (!a || !b || isNaN(a) || isNaN(b)) return null; return ((b - a) / a * 100).toFixed(1); }
+function fmt(n) {
+  if (n === '' || n == null || isNaN(parseFloat(n))) return '—';
+  return '₹' + parseFloat(n).toLocaleString('en-IN', { minimumFractionDigits: 0, maximumFractionDigits: 2 });
+}
+function fmtDate(iso) {
+  return new Date(iso).toLocaleDateString('en-IN', { day:'numeric', month:'short', year:'2-digit' });
+}
+
+/* ─── RENDER ──────────────────────────────────────── */
+function renderAll() {
+  renderSummary();
+  renderTabs();
+  renderContent();
+}
+
+function renderSummary() {
+  document.getElementById('summary').innerHTML = SECS.map(s => `
+    <div class="sum-card ${state.active === s.id ? 'active' : ''}" onclick="switchTab('${s.id}')">
+      <div class="sum-num">${state.stocks[s.id].length}</div>
+      <div class="sum-lbl">${s.name.toUpperCase()}</div>
+    </div>`).join('');
+}
+
+function renderTabs() {
+  document.getElementById('tabs').innerHTML = SECS.map(s => `
+    <button class="tab ${state.active === s.id ? 'active' : ''}" onclick="switchTab('${s.id}')">
+      <span>${s.emoji}</span>
+      <span>${s.name}</span>
+      <span class="cnt">${state.stocks[s.id].length}</span>
+    </button>`).join('');
+
+  // scroll active tab into view
+  setTimeout(() => {
+    const at = document.querySelector('.tab.active');
+    if (at) at.scrollIntoView({ behavior:'smooth', block:'nearest', inline:'center' });
+  }, 50);
+}
+
+function renderContent() {
+  const sec = SECS.find(s => s.id === state.active);
+  const stocks = state.stocks[state.active];
+  const col = COLORS[sec.color];
+
+  document.getElementById('content').innerHTML = `
+    <div class="section-header">
+      <div class="section-info">
+        <span class="section-icon">${sec.emoji}</span>
+        <div>
+          <div class="section-name">${sec.name}</div>
+          <div class="section-desc">${sec.desc}</div>
+        </div>
+      </div>
+      <button class="btn-add" onclick="openAdd('${sec.id}')">+ Add Stock</button>
+    </div>
+    <div class="stocks-grid">
+      ${stocks.length === 0 ? `
+        <div class="empty">
+          <div class="empty-icon">${sec.emoji}</div>
+          <div class="empty-title">No stocks yet</div>
+          <div class="empty-sub">Tap "Add Stock" to start tracking<br>your ${sec.name.toLowerCase()} trade ideas.</div>
+        </div>` :
+        stocks.map(s => stockCard(s, sec)).join('')
+      }
+    </div>`;
+}
+
+function stockCard(s, sec) {
+  const buy = parseFloat(s.buyPrice), tgt = parseFloat(s.targetPrice), sl = parseFloat(s.stopLoss);
+  const ret = pct(buy, tgt);
+  const risk = pct(buy, sl);
+  const rr = (ret && risk && parseFloat(risk) < 0)
+    ? Math.abs(parseFloat(ret) / parseFloat(risk)).toFixed(1) : null;
+
+  const sc = COLORS[STATUS_COLOR[s.status] || 'blue'];
+  const retPos = ret && parseFloat(ret) >= 0;
+  const secCol = COLORS[sec.color];
+
+  const retM = ret ? `<span class="metric" style="${retPos ? 'color:var(--green-text);background:var(--green-bg)' : 'color:var(--red-text);background:var(--red-bg)'}">${retPos ? '↑' : '↓'} ${Math.abs(parseFloat(ret)).toFixed(1)}% return</span>` : '';
+  const riskM = (risk && parseFloat(risk) < 0) ? `<span class="metric" style="color:var(--red-text);background:var(--red-bg)">↓ ${Math.abs(parseFloat(risk)).toFixed(1)}% risk</span>` : '';
+  const rrM = rr ? `<span class="metric" style="color:var(--muted);background:var(--surface)">R:R ${rr}:1</span>` : '';
+
+  return `<div class="stock-card">
+    <div class="card-top">
+      <div>
+        <div class="card-symbol">${s.symbol}</div>
+        <div class="card-company">${s.company || '—'}</div>
+      </div>
+      <span class="badge" style="${sc.badge}">${s.status || 'Watching'}</span>
+    </div>
+    <div class="prices">
+      <div>
+        <div class="price-lbl">BUY</div>
+        <div class="price-val" style="color:var(--blue-text)">${fmt(s.buyPrice)}</div>
+      </div>
+      <div>
+        <div class="price-lbl">TARGET</div>
+        <div class="price-val" style="color:var(--green-text)">${fmt(s.targetPrice)}</div>
+      </div>
+      <div>
+        <div class="price-lbl">STOP LOSS</div>
+        <div class="price-val" style="color:var(--red-text)">${fmt(s.stopLoss)}</div>
+      </div>
+    </div>
+    ${(retM || riskM || rrM) ? `<div class="metrics">${retM}${riskM}${rrM}</div>` : ''}
+    ${s.notes ? `<div class="notes">${s.notes}</div>` : ''}
+    <div class="card-footer">
+      <button class="btn-sm" onclick="openEdit('${sec.id}','${s.id}')">✏️ Edit</button>
+      <button class="btn-sm red" onclick="delStock('${sec.id}','${s.id}')">🗑 Remove</button>
+      <span class="card-date">${fmtDate(s.addedDate)}</span>
+    </div>
+  </div>`;
+}
+
+/* ─── ACTIONS ─────────────────────────────────────── */
+function switchTab(id) {
+  state.active = id;
+  save();
+  renderAll();
+}
+
+function openAdd(secId) {
+  state.editSec = secId;
+  state.editing = null;
+  const sec = SECS.find(s => s.id === secId);
+  document.getElementById('drawer-title').textContent = `Add to ${sec.name}`;
+  document.getElementById('btn-save').textContent = 'Add Stock';
+  document.getElementById('f-sym').value = '';
+  document.getElementById('f-co').value = '';
+  document.getElementById('f-buy').value = '';
+  document.getElementById('f-tgt').value = '';
+  document.getElementById('f-sl').value = '';
+  document.getElementById('f-st').value = 'Watching';
+  document.getElementById('f-notes').value = '';
+  document.getElementById('f-sym').classList.remove('err');
+  document.getElementById('overlay').classList.add('open');
+  setTimeout(() => document.getElementById('f-sym').focus(), 300);
+}
+
+function openEdit(secId, stockId) {
+  const s = state.stocks[secId].find(x => x.id === stockId);
+  if (!s) return;
+  state.editSec = secId;
+  state.editing = { ...s };
+  const sec = SECS.find(x => x.id === secId);
+  document.getElementById('drawer-title').textContent = `Edit ${s.symbol}`;
+  document.getElementById('btn-save').textContent = 'Save Changes';
+  document.getElementById('f-sym').value = s.symbol;
+  document.getElementById('f-co').value = s.company || '';
+  document.getElementById('f-buy').value = s.buyPrice || '';
+  document.getElementById('f-tgt').value = s.targetPrice || '';
+  document.getElementById('f-sl').value = s.stopLoss || '';
+  document.getElementById('f-st').value = s.status || 'Watching';
+  document.getElementById('f-notes').value = s.notes || '';
+  document.getElementById('f-sym').classList.remove('err');
+  document.getElementById('overlay').classList.add('open');
+}
+
+function closeDrawer() {
+  document.getElementById('overlay').classList.remove('open');
+  state.editing = null;
+}
+
+function handleOverlayClick(e) {
+  if (e.target === document.getElementById('overlay')) closeDrawer();
+}
+
+function saveStock() {
+  const symEl = document.getElementById('f-sym');
+  const sym = symEl.value.trim().toUpperCase();
+  if (!sym) { symEl.classList.add('err'); symEl.focus(); return; }
+  symEl.classList.remove('err');
+
+  const data = {
+    symbol: sym,
+    company: document.getElementById('f-co').value.trim(),
+    buyPrice: document.getElementById('f-buy').value,
+    targetPrice: document.getElementById('f-tgt').value,
+    stopLoss: document.getElementById('f-sl').value,
+    status: document.getElementById('f-st').value,
+    notes: document.getElementById('f-notes').value.trim(),
+  };
+
+  if (state.editing) {
+    const i = state.stocks[state.editSec].findIndex(x => x.id === state.editing.id);
+    if (i !== -1) state.stocks[state.editSec][i] = { ...state.editing, ...data };
+    showToast(`${sym} updated ✓`);
+  } else {
+    state.stocks[state.editSec].push({ id: uid(), ...data, addedDate: new Date().toISOString() });
+    showToast(`${sym} added to ${SECS.find(s=>s.id===state.editSec).name} ✓`);
+  }
+
+  closeDrawer();
+  save();
+  renderAll();
+}
+
+function delStock(secId, stockId) {
+  const s = state.stocks[secId].find(x => x.id === stockId);
+  if (!s) return;
+  if (!confirm(`Remove ${s.symbol} from your watchlist?`)) return;
+  state.stocks[secId] = state.stocks[secId].filter(x => x.id !== stockId);
+  showToast(`${s.symbol} removed`);
+  save();
+  renderAll();
+}
+
+/* ─── TOAST ───────────────────────────────────────── */
+let toastTimer;
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.classList.remove('show'), 2500);
+}
+
+/* ─── PWA INSTALL ─────────────────────────────────── */
+let deferredPrompt = null;
+window.addEventListener('beforeinstallprompt', e => {
+  e.preventDefault();
+  deferredPrompt = e;
+  document.getElementById('install-btn').classList.add('visible');
+});
+
+function installApp() {
+  if (!deferredPrompt) return;
+  deferredPrompt.prompt();
+  deferredPrompt.userChoice.then(() => {
+    deferredPrompt = null;
+    document.getElementById('install-btn').classList.remove('visible');
+  });
+}
+
+window.addEventListener('appinstalled', () => {
+  document.getElementById('install-btn').classList.remove('visible');
+  showToast('App installed successfully! ✓');
+});
+
+/* ─── SERVICE WORKER ──────────────────────────────── */
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('./sw.js').catch(() => {});
+  });
+}
+
+/* ─── KEYBOARD ESC ────────────────────────────────── */
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') closeDrawer();
+});
+
+/* ─── INIT ────────────────────────────────────────── */
+document.getElementById('topbar-date').textContent =
+  new Date().toLocaleDateString('en-IN', { weekday:'short', day:'numeric', month:'short', year:'numeric' });
+
+load();
+renderAll();
+</script>
+</body>
+</html>
