@@ -1,16 +1,15 @@
 {
-  "name": "Trading Watchlist",
-  "short_name": "Watchlist",
-  "description": "Track your trading stock ideas by strategy — Long Term, Short Term, Swing, and Intraday.",
-  "start_url": "./index.html",
+  "name": "Trading Watchlist Pro",
+  "short_name": "TW Pro",
+  "description": "Professional stock watchlist with live prices, closed trades, P&L tracking & alerts.",
+  "start_url": "./index.html?v=3",
   "display": "standalone",
   "orientation": "portrait-primary",
-  "background_color": "#0f1117",
-  "theme_color": "#0f1117",
+  "background_color": "#0a0e1a",
+  "theme_color": "#0a0e1a",
   "icons": [
     { "src": "icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable" },
     { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
   ],
-  "categories": ["finance", "productivity"],
-  "screenshots": []
+  "categories": ["finance", "productivity"]
 }
